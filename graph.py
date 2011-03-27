@@ -2,6 +2,14 @@ import sys
 from numpy import NaN, Inf, arange, isscalar, asarray
 import csv
 
+import matplotlib
+
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.mlab as mlab
+import matplotlib.cbook as cbook
+
 
 def peakdet(v, delta, x = None):
     """
@@ -91,11 +99,30 @@ if __name__=="__main__":
     print data_series
     print "-------------------"
 
-    maxtab,mintab= peakdet(data_series,0.01)
+    maxtab,mintab= peakdet(data_series,0.1)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    #ax.plot(time_series, data_series)
+
+    ax.plot(time_series,data_series)
 
     for peak in maxtab:
         print "Peak found at time %f with height %f" % (time_series[peak[0]], peak[1])
 
+        ax.annotate('peak', xy=(time_series[peak[0]], peak[1]),  xycoords='data',
+                xytext=(time_series[peak[0]], peak[1] + 0.1), textcoords='data',
+                arrowprops=dict(facecolor='red', shrink=0.05),
+                horizontalalignment='center', verticalalignment='top',
+                )
+
+
     
+
+
+
+
+    plt.show()
+
 
 
