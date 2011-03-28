@@ -103,8 +103,6 @@ if __name__=="__main__":
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    #ax.plot(time_series, data_series)
-
     ax.plot(time_series,data_series)
 
     for peak in maxtab:
