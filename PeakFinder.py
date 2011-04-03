@@ -122,7 +122,7 @@ def CheckOutput( peaks, bases ):
 
 def PrintOutput( data_set, peaks, bases, times, filename ):
 
-    f = open(filename + '_out.csv', 'a');
+    f = open('output/' + filename + '_out.csv', 'a');
 
     print
     print "****************   Data set %2d   ***********************" % data_set
