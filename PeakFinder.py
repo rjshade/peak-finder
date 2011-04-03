@@ -137,9 +137,9 @@ def PrintOutput( data_set, peaks, bases, times, filename ):
     for i in range(1,len(peaks)):
         isp_times.append( peak_times[i] - peak_times[i-1] )
 
-    print '        \tTime\tBase\tPeak\tDelta\tISP'
-    f.write('Peak#,Time,Base,Peak,Delta,ISP\n')
-    print "----------|---------------------------------------------"
+    print '        \tTime\tBase\tPeak\tDelta\tISP\tISP freq (s^-1)\tISP freq (min^-1)'
+    f.write('Peak#,Time,Base,Peak,Delta,ISP,ISP freq (s^-1),ISP freq (min^-1)\n')
+    print "----------|------------------------------------------------------------------------------"
     for i in arange(len(peaks)):
 
         peak = peaks[i];
@@ -161,8 +161,8 @@ def PrintOutput( data_set, peaks, bases, times, filename ):
     if len(peaks) > 1:
         avg_delta = (sum(deltas)/len(deltas))
         avg_isp   = (sum(isp_times)/len(isp_times));
-        print 'Average   |\t\t\t\t%4.3f\t%4.3f' % (avg_delta,avg_isp)
-        f.write('Average,,,,%4.3f,%4.3f' % (avg_delta,avg_isp))
+        print 'Average   |\t\t\t\t%4.3f\t%4.3f\t%4.6f\t%4.6f' % (avg_delta,avg_isp,1/avg_isp,60/avg_isp)
+        f.write('Average,,,,%4.3f,%4.3f,%4.6f,%4.6f' % (avg_delta,avg_isp,1/avg_isp,60/avg_isp))
 
     print "\n\n",
     f.write('\n\n')
@@ -214,7 +214,7 @@ def ParseArgs( argv ):
     numnei   = 5 # +- numnei indices are searched to find bases
 
     try:
-        opts, args = getopt.getopt(argv[1:], "f:d:n:", ["file=", "delta=", "numnei="])
+        opts, args = getopt.getopt(argv[1:], "f:d:n:p", ["file=", "delta=", "numnei=", "plot"])
     except getopt.GetoptError, err:
         print str(err)
         #usage()
@@ -223,6 +223,7 @@ def ParseArgs( argv ):
 
     output = None
     verbose = False
+    plotfig = False
     for o, a in opts:
         if o in ("-f", "--file"):
             filename = a
@@ -230,28 +231,32 @@ def ParseArgs( argv ):
             delta = a
         elif o in ("-n", "--numnei"):
             numnei = a
+        elif o in ("-p", "--plot"):
+            plotfig = True
         else:
             assert False, "unhandled option"
 
-    return filename, float(delta), int(numnei)
+    return filename, float(delta), int(numnei), plotfig
 
 
 def main():
-    filename, delta, numnei = ParseArgs( sys.argv )
+    filename, delta, numnei, plotfig = ParseArgs( sys.argv )
 
     times,data = ParseDataFromCSV( filename )
 
-    fig = plt.figure()
+    if plotfig:
+        fig = plt.figure()
 
     for i in arange(len(data)):
         maxima,minima,bases = PeakDetector(data[i], delta, numnei)
 
         if CheckOutput( maxima, bases ):
             PrintOutput( i+1, maxima, bases, times, filename )
-            PlotOutput( fig, data[i], times, maxima, bases, [len(data), 1, i] )
+            if plotfig:
+                PlotOutput( fig, data[i], times, maxima, bases, [len(data), 1, i] )
 
-    plt.show()
-
+    if plotfig:
+        plt.show()
 
 if __name__=="__main__":
     main()
