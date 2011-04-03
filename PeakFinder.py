@@ -180,14 +180,14 @@ def ParseDataFromCSV( filename ):
 
     times = []
 
-    # fill data_series array with right number of arrays
-    data = [ [] for i in range(len(csv_data[0]))]
+    # fill data_series array with an array per column of data
+    data = [ [] for i in range(len(csv_data[0])-1)]
 
     # now fill each array in data_series with the CSV data
     for row in csv_data:
         times.append(float(row[0]))
-        for i in range(1,len(data)):
-            data[i-1].append(float(row[i]))
+        for i in arange(len(row[1:])):
+            data[i].append(float(row[i+1]))
 
     return times, data
 
@@ -243,14 +243,12 @@ def main():
 
     fig = plt.figure()
 
-    subplot = [len(data),1,1]
-    for i in arange(len(data)-1):
-
+    for i in arange(len(data)):
         maxima,minima,bases = PeakDetector(data[i], delta, numnei)
 
         if CheckOutput( maxima, bases ):
             PrintOutput( i+1, maxima, bases, times, filename )
-            PlotOutput( fig, data[i], times, maxima, bases, [6, 1, i] )
+            PlotOutput( fig, data[i], times, maxima, bases, [len(data), 1, i] )
 
     plt.show()
 
