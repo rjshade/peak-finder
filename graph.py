@@ -147,10 +147,10 @@ def findPeaks( fig, time_series, data_series, delta, numnei, plotNum ):
         peak_time = peak_times[i]
         base_time = base_times[i]
 
-        annotate( ax, 'peak %d' % i, peak )
-        annotate( ax, 'base %d' % i, base, -0.1, 'blue' )
+        annotate( ax, ('peak %d' % (i+1)), peak)
+        annotate( ax, ('base %d' % (i+1)), base, -0.1, 'blue' )
 
-        print 'Peak %4d |\t%4d\t%4.3f\t%4.3f\t%4.3f\t' % (i,peak_time,base[1],peak[1],deltas[i]),
+        print 'Peak %4d |\t%4d\t%4.3f\t%4.3f\t%4.3f\t' % (i+1,peak_time,base[1],peak[1],deltas[i]),
 
         if( i > 0):
             isp = isp_times[i-1]
@@ -178,7 +178,7 @@ if __name__=="__main__":
     fig = plt.figure()
     for i in arange(len(data_series)-1):
         print
-        print "****************   Data set %2d   ***********************" % i
+        print "****************   Data set %2d   ***********************" % (i+1)
         print
         findPeaks( fig, time_series, data_series[i], 0.2, 10, i )
 
