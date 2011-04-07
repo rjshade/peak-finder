@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import getopt,sys,signal
 from numpy import NaN, Inf, arange, isscalar, asarray
 import csv
