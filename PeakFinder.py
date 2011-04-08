@@ -193,9 +193,9 @@ def ParseDataFromCSV( filename ):
 
     return times, data
 
-def PlotOutput( fig, data, times, peaks, bases, subplot ):
+def PlotOutput( fig, data, times, peaks, bases, subplot, clr ):
     ax = fig.add_subplot(subplot[0],subplot[1],subplot[2])
-    ax.plot(times, data)
+    ax.plot(times, data, color=clr)
 
     for i in arange(len(peaks)):
         annotate( ax, times, ('peak %d' % (i+1)), peaks[i])
@@ -214,9 +214,12 @@ def ParseArgs( argv ):
     filename = "data.csv"
     delta    = 0.2 # jump in value to determine maxima/minima
     numnei   = 5 # +- numnei indices are searched to find bases
+    a = 0
+    b = 0
+    c = 0
 
     try:
-        opts, args = getopt.getopt(argv[1:], "f:d:n:p", ["file=", "delta=", "numnei=", "plot"])
+        opts, args = getopt.getopt(argv[1:], "f:d:n:pa:b:c:", ["file=", "delta=", "numnei=", "plot"])
     except getopt.GetoptError, err:
         print str(err)
         #usage()
@@ -226,37 +229,51 @@ def ParseArgs( argv ):
     output = None
     verbose = False
     plotfig = False
-    for o, a in opts:
+    for o, arg in opts:
         if o in ("-f", "--file"):
-            filename = a
+            filename = arg
         elif o in ("-d", "--delta"):
-            delta = a
+            delta = arg
         elif o in ("-n", "--numnei"):
-            numnei = a
+            numnei = arg
         elif o in ("-p", "--plot"):
             plotfig = True
+        elif o in ("-a"):
+            a = arg
+        elif o in ("-b"):
+            b = arg
+        elif o in ("-c"):
+            c = arg
         else:
             assert False, "unhandled option"
 
-    return filename, float(delta), int(numnei), plotfig
+    return filename, float(delta), int(numnei), plotfig, int(a), int(b), int(c)
+
+
+
+def ProcessTimeSlice( data, times, fig, subplot, color, calcPeaks, delta = 1, numnei = 10 ):
+    maxima = []; minima = []; bases = []
+    if calcPeaks:
+        maxima,minima,bases = PeakDetector(data, delta, numnei)
+
+    PlotOutput( fig, data, times, maxima, bases, subplot, color )
+
 
 
 def main():
-    filename, delta, numnei, plotfig = ParseArgs( sys.argv )
+    filename, delta, numnei, plotfig, a, b, c = ParseArgs( sys.argv )
 
     times,data = ParseDataFromCSV( filename )
 
     if plotfig:
         fig = plt.figure()
 
+    print( "a,b,c=",a,b,c)
     for i in arange(len(data)):
-        maxima,minima,bases = PeakDetector(data[i], delta, numnei)
-
-        if CheckOutput( maxima, bases ):
-            PrintOutput( i+1, maxima, bases, times, filename )
-            if plotfig:
-                PlotOutput( fig, data[i], times, maxima, bases, [len(data), 1, i] )
-
+        ProcessTimeSlice(  data[i][0:a], times[0:a], fig,[len(data), 1, i], 'k', False, delta, numnei )
+        ProcessTimeSlice(  data[i][a:b], times[a:b], fig,[len(data), 1, i], 'r', True, delta, numnei  )
+        ProcessTimeSlice(  data[i][b:c], times[b:c], fig,[len(data), 1, i], 'g', True , delta, numnei )
+        ProcessTimeSlice(  data[i][c:],  times[c:],  fig,[len(data), 1, i], 'k', False, delta, numnei )
     if plotfig:
         plt.show()
 
