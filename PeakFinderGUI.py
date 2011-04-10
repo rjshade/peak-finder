@@ -66,17 +66,6 @@ class PeakFinderGUI(QMainWindow):
             self.canvas.print_figure(path, dpi=self.dpi)
             self.statusBar().showMessage('Saved to %s' % path, 2000)
     
-    def on_about(self):
-        msg = """ A demo of using PyQt with matplotlib:
-        
-         * Use the matplotlib navigation bar
-         * Add values to the text box and press Enter (or click "Draw")
-         * Show or hide the grid
-         * Drag the slider to modify the width of the bars
-         * Save the plot to a file using the File menu
-         * Click on a bar to receive an informative message
-        """
-        QMessageBox.about(self, "About the demo", msg.strip())
     
     def on_pick(self, event):
         # The event received here is of the type
@@ -250,13 +239,6 @@ class PeakFinderGUI(QMainWindow):
         self.add_actions(self.file_menu, 
             (load_file_action, None, quit_action))
         
-        self.help_menu = self.menuBar().addMenu("&Help")
-        about_action = self.create_action("&About", 
-            shortcut='F1', slot=self.on_about, 
-            tip='About the demo')
-        
-        self.add_actions(self.help_menu, (about_action,))
-
     def add_actions(self, target, actions):
         for action in actions:
             if action is None:
