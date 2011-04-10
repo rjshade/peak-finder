@@ -106,6 +106,10 @@ class PeakFinderGUI(QMainWindow):
         delta = self.spinboxes['delta'].value()
         numnei = self.spinboxes['numnei'].value()
         self.myPeakFinder.Reset( delta, numnei, A, B, C   )
+        print
+        print
+        print '################ recalculating... ######################'
+        print
         self.myPeakFinder.Print()
 
         self.on_draw()
@@ -218,8 +222,15 @@ class PeakFinderGUI(QMainWindow):
     def on_new_file(self):
         filename = QFileDialog.getOpenFileName( self, 'Open CSV file' )
         self.csv = filename
+
+        print
+        print
+        print '################ loaded %s' % self.csv
+        print
+
         self.myPeakFinder.OnNewFile( self.csv )
         self.myPeakFinder.Run()
+        self.myPeakFinder.Print()
         self.on_draw()
 
 
