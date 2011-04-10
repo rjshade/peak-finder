@@ -6,170 +6,302 @@ import csv
 
 import matplotlib.pyplot as plt
 
+def valToIdx( val, data ):
+    '''
+        find the index of first element in data
+        which is >= val
 
+        assuming data is ordered list of values...
+    '''
+    idx = 0
+    cur = 0
+    val = float(val)
+    while cur < val and idx < len(data):
+        cur = data[idx]
+        idx += 1
 
-def PeakDetector(v, delta, numnei=-1):
-    """
-    Converted from MATLAB script at http://billauer.co.il/peakdet.html
-    
-    Currently returns two lists of tuples, but maybe arrays would be better
-    
-    function [maxtab, mintab]=PeakDetector(v, delta, numnei)
-    %PeakDetector   Detect peaks in a vector
-    %               [MAXTAB, MINTAB] = PEAKDETECTOR(V, DELTA) finds the local
-    %               maxima and minima ("peaks") in the vector V,
-    %               MAXTAB and MINTAB consists of two columns. Column 1
-    %               contains indices in V, and column 2 the found values.
-    %      
-    %               A point is considered a maximum peak if it has the maximal
-    %               value, and was preceded (to the left) by a value lower by
-    %               DELTA.
-    %
-    %               [MAXTAB, MINTAB, BASES] = PEAKDETECTOR(V,DELTA,NUMNEI) works as
-    %               above and additionally finds peak 'bases' - defined as the lowest
-    %               point within +- NUMNEI indices of the peak index.
-    
-    % Based on code by Eli Billauer
-    """
-    maxtab = []
-    mintab = []
-    bases = []
-       
-    x = arange(len(v))
-    
-    v = asarray(v)
-    
-    if len(v) != len(x):
-        sys.exit('Input vectors v and x must have same length')
-    
-    if not isscalar(delta):
-        sys.exit('Input argument delta must be a scalar')
-    
-    if delta <= 0:
-        sys.exit('Input argument delta must be positive')
-    
-    mn, mx = Inf, -Inf
-    mnpos, mxpos = NaN, NaN
-    
-    base = v[0] 
-    basepos = NaN
-    
-    lookformax = True
-    
-    for i in arange(len(v)):
-        this = v[i]
-        if this > mx:
-            mx = this
-            mxpos = x[i]
-        if this < mn:
-            mn = this
-            mnpos = x[i]
+    return int(idx)
 
-        if lookformax:
-            if this < mx-delta:
-                maxtab.append((mxpos, mx))
-                mn = this
-                mnpos = x[i]
+class PeakFinder:
+    def __init__( self, times, data, delta, numnei, a, b, c ):
+        self.Times = times
+        self.Data = data
+        self.delta = delta
+        self.numnei = numnei
+        self.Results = []
 
-                if numnei > 0:
-                    base,basepos = getLowestInNeighbourhood( v, mxpos, numnei )
-                    bases.append((basepos,base))
+        self.A,self.B,self.C = self.ConvertTimesToIndices( a,b,c )
 
-                lookformax = False
+    def ConvertTimesToIndices( self, a,b,c ):
+        #print( "a,b,c=",a,b,c)
+        # if b,c haven't been specified then just parse the whole file
+        if b == 0:
+            b = len(self.Times) - 1
 
-        else:
-            if this > mn+delta:
-                mintab.append((mnpos, mn))
+        if c == 0:
+            #print('c==0 len(times=',len(times),times)
+            c = len(self.Times) - 1
+
+        # conert a,b,c to idx values
+        return valToIdx(a,self.Times), valToIdx(b,self.Times), valToIdx(c,self.Times)
+
+    def Reset( self ):
+        self.Results = []
+
+    def Run( self ):
+        self.Results = []
+        for i in arange(len(self.Data)):
+            self.Results.append([])
+            self.Results[i].append( self.PeakDetector( self.Data[i][self.A:self.B], self.delta, self.numnei) )
+            self.Results[i].append( self.PeakDetector( self.Data[i][self.B:self.C], self.delta, self.numnei) )
+
+    def Print( self ):
+        for i in arange(len(self.Data)):
+            atob = self.Results[i][0]
+            btoc = self.Results[i][1]
+
+            print
+            print "****************   Data set %2d   ***********************" % (i+1)
+            print
+            print "\t----------   A -> B   ------------\n"
+
+            self.PrintPeaks( self.A, atob )
+
+            print "\t----------   B -> C   ------------\n"
+            self.PrintPeaks( self.B, btoc )
+            
+            print
+
+    def PrintPeaks( self, offset, result ):
+        peaks = result['Maxima']
+        bases = result['Bases']
+
+        if len(peaks) == 0:
+            print '\t\t    No peaks!\n'
+            return
+    
+        peak_times = [self.Times[j] for j in [ peaks[i][0] + offset for i in arange(len(peaks)) ]]
+        base_times = [self.Times[j] for j in [ bases[i][0] + offset for i in arange(len(bases)) ]]
+        deltas     = [peaks[i][1] - bases[i][1] for i in arange(len(peaks))]
+    
+        isp_times = []
+        for i in range(1,len(peaks)):
+            isp_times.append( peak_times[i] - peak_times[i-1] )
+
+    
+        print '        \tTime\tBase\tPeak\tDelta\tISP\tISP Hz'
+        #print "----------|------------------------------------------------------------------------------"
+        for i in arange(len(peaks)):
+            peak = peaks[i];
+            base = bases[i];
+            peak_time = peak_times[i]
+            base_time = base_times[i]
+     
+            #print 'Peak %4d |\t%4d\t%4.3f\t%4.3f\t%4.3f\t' % (i+1,peak_time,base[1],peak[1],deltas[i]),
+            print 'Peak %d\t\t%4d\t%4.3f\t%4.3f\t%4.3f\t' % (i+1,peak_time,base[1],peak[1],deltas[i]),
+     
+            if( i > 0):
+                isp = isp_times[i-1]
+                print '%4.3f' % (isp),
+     
+            print
+      
+        if len(peaks) > 1:
+            avg_delta = (sum(deltas)/len(deltas))
+            avg_isp   = (sum(isp_times)/len(isp_times));
+            print 'Average  \t\t\t\t%4.3f\t%4.3f\t%4.6f' % (avg_delta,avg_isp,1/avg_isp)
+     
+        print "\n\n",
+    
+    def PeakDetector( self, v, delta, numnei=-1):
+        """
+        Converted from MATLAB script at http://billauer.co.il/peakdet.html
+        
+        Currently returns two lists of tuples, but maybe arrays would be better
+        
+        function [maxtab, mintab]=PeakDetector(v, delta, numnei)
+        %PeakDetector   Detect peaks in a vector
+        %               [MAXTAB, MINTAB] = PEAKDETECTOR(V, DELTA) finds the local
+        %               maxima and minima ("peaks") in the vector V,
+        %               MAXTAB and MINTAB consists of two columns. Column 1
+        %               contains indices in V, and column 2 the found values.
+        %      
+        %               A point is considered a maximum peak if it has the maximal
+        %               value, and was preceded (to the left) by a value lower by
+        %               DELTA.
+        %
+        %               [MAXTAB, MINTAB, BASES] = PEAKDETECTOR(V,DELTA,NUMNEI) works as
+        %               above and additionally finds peak 'bases' - defined as the lowest
+        %               point within +- NUMNEI indices of the peak index.
+        
+        % Based on code by Eli Billauer
+        """
+        maxtab = []
+        mintab = []
+        bases = []
+           
+        x = arange(len(v))
+        
+        v = asarray(v)
+        
+        if len(v) != len(x):
+            sys.exit('Input vectors v and x must have same length')
+        
+        if not isscalar(delta):
+            sys.exit('Input argument delta must be a scalar')
+        
+        if delta <= 0:
+            sys.exit('Input argument delta must be positive')
+        
+        mn, mx = Inf, -Inf
+        mnpos, mxpos = NaN, NaN
+        
+        base = 0 
+        basepos = NaN
+        
+        lookformax = True
+        
+        for i in arange(len(v)):
+            this = v[i]
+            if this > mx:
                 mx = this
                 mxpos = x[i]
-                lookformax = True
+            if this < mn:
+                mn = this
+                mnpos = x[i]
+    
+            if lookformax:
+                if this < mx-delta:
+                    maxtab.append((mxpos, mx))
+                    mn = this
+                    mnpos = x[i]
+    
+                    if numnei > 0:
+                        base,basepos = self.getLowestInNeighbourhood( v, mxpos, numnei )
+                        bases.append((basepos,base))
+    
+                    lookformax = False
+    
+            else:
+                if this > mn+delta:
+                    mintab.append((mnpos, mn))
+                    mx = this
+                    mxpos = x[i]
+                    lookformax = True
+    
+        return {'Maxima':maxtab,'Minima':mintab, 'Bases':bases}
+    
+    def getLowestInNeighbourhood( self, data, index, numnei ):
+        """
+        finds the lowest value in vector data in the range
+        (data[index - numnei], data[index + numnei])
+        """
+    
+        minIdx = max(index - numnei, 0)
+        maxIdx = min(index + numnei, len(data))
+    
+        lowest = +Inf
+        lowest_idx = minIdx
+    
+        for i in range(minIdx,maxIdx):
+            if data[i] < lowest:
+                lowest = data[i]
+                lowest_idx = i
+    
+        #print minIdx, maxIdx, lowest, lowest_idx
+        return lowest,lowest_idx
+    
+    def CheckOutput( self, peaks, bases ):
+        if len(peaks) == 0:
+            print 'Warning: No peaks found'
+            return False
+    
+        if len(peaks) != len(bases):
+            print 'Error: unequal number of peaks/bases...'
+            return False
+    
+        return True
+    
+    def Plot( self, fig ):
+        for i in arange(len(self.Data)):
+            data = self.Data[i]
+            atob = self.Results[i][0]
+            btoc = self.Results[i][1]
+            #times = [self.Times[j] for j in [ xima'][i][0] for i in arange(len(atob['Maxima'])) ]]
+            times = self.Times
+            ax = fig.add_subplot(len(self.Data),1,i)
 
-    return maxtab, mintab, bases
+            ax.plot(times, data, color='k')
+            ax.grid(True)
 
-
-
-def getLowestInNeighbourhood( data, index, numnei ):
-    """
-    finds the lowest value in vector data in the range
-    (data[index - numnei], data[index + numnei])
-    """
-
-    minIdx = max(index - numnei, 0)
-    maxIdx = min(index + numnei, len(data))
-
-    lowest = +Inf
-    lowest_idx = minIdx
-
-    for i in range(minIdx,maxIdx):
-        if data[i] < lowest:
-            lowest = data[i]
-            lowest_idx = i
-
-    #print minIdx, maxIdx, lowest, lowest_idx
-    return lowest,lowest_idx
-
-
-
-def CheckOutput( peaks, bases ):
-    if len(peaks) == 0:
-        print 'Warning: No peaks found'
-        return False
-
-    if len(peaks) != len(bases):
-        print 'Error: unequal number of peaks/bases...'
-        return False
-
-    return True
-
-
-def PrintOutput( data_set, peaks, bases, times, logfile ):
-
-    # no peaks == no printing
-    if len(peaks) == 0:
-        print '\t\t    No peaks!\n'
-        return
-
-    f = logfile
-
-    peak_times = [times[j] for j in [ peaks[i][0] for i in arange(len(peaks)) ]]
-    base_times = [times[j] for j in [ bases[i][0] for i in arange(len(bases)) ]]
-    deltas     = [peaks[i][1] - bases[i][1] for i in arange(len(peaks))]
-
-    isp_times = []
-    for i in range(1,len(peaks)):
-        isp_times.append( peak_times[i] - peak_times[i-1] )
-
-    print '        \tTime\tBase\tPeak\tDelta\tISP\tISP Hz'
-    f.write('Peak#,Time,Base,Peak,Delta,ISP,ISP Hz')
-    print "----------|------------------------------------------------------------------------------"
-    for i in arange(len(peaks)):
-
-        peak = peaks[i];
-        base = bases[i];
-        peak_time = peak_times[i]
-        base_time = base_times[i]
-
-        print 'Peak %4d |\t%4d\t%4.3f\t%4.3f\t%4.3f\t' % (i+1,peak_time,base[1],peak[1],deltas[i]),
-        f.write('%4d,%4d,%4.3f,%4.3f,%4.3f,' % (i+1,peak_time,base[1],peak[1],deltas[i]))
-
-        if( i > 0):
-            isp = isp_times[i-1]
-            print '%4.3f' % (isp),
-            f.write('%4.3f' % isp)
-
-        print
-        f.write('\n')
- 
-    if len(peaks) > 1:
-        avg_delta = (sum(deltas)/len(deltas))
-        avg_isp   = (sum(isp_times)/len(isp_times));
-        print 'Average   |\t\t\t\t%4.3f\t%4.3f\t%4.6f' % (avg_delta,avg_isp,1/avg_isp)
-        f.write('Average,,,,%4.3f,%4.3f,%4.6f' % (avg_delta,avg_isp,1/avg_isp))
-
-    print "\n\n",
-    f.write('\n\n')
-
-
+            if( self.A < len(self.Times) ):
+                plt.axvline( x=self.Times[self.A],ymin=0, ymax=2,color='k')
+            if( self.B < len(self.Times) ):
+                plt.axvline( x=self.Times[self.B],ymin=0, ymax=2,color='r')
+            if( self.C < len(self.Times) ):
+                plt.axvline( x=self.Times[self.C],ymin=0, ymax=2,color='k')
+     
+            self.PlotPeaks( ax, '', self.A, atob, times )
+            self.PlotPeaks( ax, '', self.B, btoc, times )
+    
+    def PlotPeaks( self, ax, label, offset, result, times ):
+        peaks = result['Maxima']
+        bases = result['Bases']
+        for i in arange(len(peaks)):
+            peak = list(peaks[i])
+            peak[0] = peak[0] + offset
+            base = list(bases[i])
+            base[0] = base[0] + offset
+            self.annotate( ax, times, '', peak, +0.1)
+            self.annotate( ax, times, '', base, -0.1, 'blue' )
+    
+    def annotate( self, ax, times,  caption, point, offset=0.1, color='red' ):
+        ax.annotate(caption, xy=(times[point[0]], point[1]),  xycoords='data',
+                    xytext=(times[point[0]], point[1] + offset), textcoords='data',
+                    arrowprops=dict(facecolor=color, shrink=0.05),
+                    horizontalalignment='center', verticalalignment='top',
+                    )
+    
+    
+def ParseArgs( argv ):
+    filename = "data.csv"
+    delta    = 0.2 # jump in value to determine maxima/minima
+    numnei   = 10 # +- numnei indices are searched to find bases
+    a = 50
+    b = 500 
+    c = 1500
+    
+    try:
+        opts, args = getopt.getopt(argv[1:], "f:d:n:pa:b:c:", ["file=", "delta=", "numnei=", "plot"])
+    except getopt.GetoptError, err:
+        print str(err)
+        #usage()
+        print 'usage: ', argv[0], ' --file data.csv --delta 0.2 --numnei 10 -a 50 -b 500 -c 1500'
+        sys.exit(2)
+    
+    output = None
+    verbose = False
+    plotfig = False
+    for o, arg in opts:
+        if o in ("-f", "--file"):
+            filename = arg
+        elif o in ("-d", "--delta"):
+            delta = arg
+        elif o in ("-n", "--numnei"):
+            numnei = arg
+        elif o in ("-p", "--plot"):
+            plotfig = True
+        elif o in ("-a"):
+            a = arg
+        elif o in ("-b"):
+            b = arg
+        elif o in ("-c"):
+            c = arg
+        else:
+            assert False, "unhandled option"
+    
+    return filename, float(delta), int(numnei), plotfig, a, b, c
+    
 def ParseDataFromCSV( filename ):
     """
     expects filename to be a CSV file in which the first column
@@ -193,131 +325,20 @@ def ParseDataFromCSV( filename ):
 
     return times, data
 
-def PlotOutput( fig, data, times, peaks, bases, subplot, clr ):
-    ax = fig.add_subplot(subplot[0],subplot[1],subplot[2])
-    ax.plot(times, data, color=clr)
-
-    for i in arange(len(peaks)):
-        annotate( ax, times, ('peak %d' % (i+1)), peaks[i])
-        annotate( ax, times, ('base %d' % (i+1)), bases[i], -0.1, 'blue' )
-
-
-def annotate( ax, times,  caption, point, offset=0.1, color='red' ):
-    ax.annotate(caption, xy=(times[point[0]], point[1]),  xycoords='data',
-                xytext=(times[point[0]], point[1] + offset), textcoords='data',
-                arrowprops=dict(facecolor=color, shrink=0.05),
-                horizontalalignment='center', verticalalignment='top',
-                )
-
-
-def ParseArgs( argv ):
-    filename = "data.csv"
-    delta    = 0.2 # jump in value to determine maxima/minima
-    numnei   = 5 # +- numnei indices are searched to find bases
-    a = 0
-    b = 0
-    c = 0
-
-    try:
-        opts, args = getopt.getopt(argv[1:], "f:d:n:pa:b:c:", ["file=", "delta=", "numnei=", "plot"])
-    except getopt.GetoptError, err:
-        print str(err)
-        #usage()
-        print 'usage: ', argv[0], ' --file data.csv --delta 0.2 --numnei 10 -a 50 -b 100 -c 500'
-        sys.exit(2)
-
-    output = None
-    verbose = False
-    plotfig = False
-    for o, arg in opts:
-        if o in ("-f", "--file"):
-            filename = arg
-        elif o in ("-d", "--delta"):
-            delta = arg
-        elif o in ("-n", "--numnei"):
-            numnei = arg
-        elif o in ("-p", "--plot"):
-            plotfig = True
-        elif o in ("-a"):
-            a = arg
-        elif o in ("-b"):
-            b = arg
-        elif o in ("-c"):
-            c = arg
-        else:
-            assert False, "unhandled option"
-
-    return filename, float(delta), int(numnei), plotfig, a, b, c
-
-
-
-def ProcessTimeSlice( data, times, fig, subplot, color, calcPeaks, delta, numnei, logfile ):
-    maxima = []; minima = []; bases = []
-    if calcPeaks:
-        if len(data) > 0 and len(times) > 0:
-            maxima,minima,bases = PeakDetector(data, delta, numnei)
-
-    PlotOutput( fig, data, times, maxima, bases, subplot, color )
-    PrintOutput( subplot[2], maxima, bases, times, logfile )
-
-
-def valToIdx( val, data ):
-    '''
-        find the index of first element in data
-        which is >= val
-
-        assuming data is ordered list of values...
-    '''
-    idx = 0
-    cur = 0
-    val = float(val)
-    while cur < val and idx < len(data):
-        cur = data[idx]
-        idx += 1
-
-    return int(idx)
+    
 
 def main():
     filename, delta, numnei, plotfig, a, b, c = ParseArgs( sys.argv )
     times,data = ParseDataFromCSV( filename )
 
-    #print( "a,b,c=",a,b,c)
-    # if b,c haven't been specified then just parse the whole file
-    if b == 0:
-        b = times[-1]
+    myPeakFinder = PeakFinder( times, data, delta, numnei, a, b, c )
 
-    if c == 0:
-        #print('c==0 len(times=',len(times),times)
-        c = times[-1]
+    myPeakFinder.Run()
+    myPeakFinder.Print()
 
-    # conert a,b,c to idx values
-    a_idx = valToIdx(a,times)
-    b_idx = valToIdx(b,times)
-    c_idx = valToIdx(c,times)
-
-    #print(times)
-    print( "a,b,c_idx=",a_idx,b_idx,c_idx)
-
-    #if plotfig:
-    fig = plt.figure()
-
-    for i in arange(len(data)):
-        f = open('output/' + filename + '_out.csv', 'a');
-
-        print
-        print "****************   Data set %2d   ***********************" % (i+1)
-        print
-        f.write('Data set %2d\n' % (i+1))
-
-        print "\t----------   0 -> A   ------------\n"
-        ProcessTimeSlice(  data[i][0:a_idx], times[0:a_idx], fig,[len(data), 1, i], 'k', False, delta, numnei, f )
-        print "\t----------   A -> B   ------------\n"
-        ProcessTimeSlice(  data[i][a_idx:b_idx], times[a_idx:b_idx], fig,[len(data), 1, i], 'r', True, delta, numnei , f )
-        print "\t----------   B -> C   ------------\n"
-        ProcessTimeSlice(  data[i][b_idx:c_idx], times[b_idx:c_idx], fig,[len(data), 1, i], 'g', True , delta, numnei, f)
-        print "\t----------   C -> end ------------\n"
-        ProcessTimeSlice(  data[i][c_idx:],  times[c_idx:],  fig,[len(data), 1, i], 'k', False, delta, numnei, f)
     if plotfig:
+        fig = plt.figure()
+        myPeakFinder.Plot(fig)
         plt.show()
 
 if __name__=="__main__":
