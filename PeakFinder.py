@@ -122,14 +122,14 @@ def CheckOutput( peaks, bases ):
     return True
 
 
-def PrintOutput( data_set, peaks, bases, times, filename ):
+def PrintOutput( data_set, peaks, bases, times, logfile ):
 
-    f = open('output/' + filename + '_out.csv', 'a');
+    # no peaks == no printing
+    if len(peaks) == 0:
+        print '\t\t    No peaks!\n'
+        return
 
-    print
-    print "****************   Data set %2d   ***********************" % data_set
-    print
-    f.write('Data set %2d\n' % data_set)
+    f = logfile
 
     peak_times = [times[j] for j in [ peaks[i][0] for i in arange(len(peaks)) ]]
     base_times = [times[j] for j in [ bases[i][0] for i in arange(len(bases)) ]]
@@ -139,8 +139,8 @@ def PrintOutput( data_set, peaks, bases, times, filename ):
     for i in range(1,len(peaks)):
         isp_times.append( peak_times[i] - peak_times[i-1] )
 
-    print '        \tTime\tBase\tPeak\tDelta\tISP\tISP freq (s^-1)\tISP freq (min^-1)'
-    f.write('Peak#,Time,Base,Peak,Delta,ISP,ISP freq (s^-1),ISP freq (min^-1)\n')
+    print '        \tTime\tBase\tPeak\tDelta\tISP\tISP Hz'
+    f.write('Peak#,Time,Base,Peak,Delta,ISP,ISP Hz')
     print "----------|------------------------------------------------------------------------------"
     for i in arange(len(peaks)):
 
@@ -163,8 +163,8 @@ def PrintOutput( data_set, peaks, bases, times, filename ):
     if len(peaks) > 1:
         avg_delta = (sum(deltas)/len(deltas))
         avg_isp   = (sum(isp_times)/len(isp_times));
-        print 'Average   |\t\t\t\t%4.3f\t%4.3f\t%4.6f\t%4.6f' % (avg_delta,avg_isp,1/avg_isp,60/avg_isp)
-        f.write('Average,,,,%4.3f,%4.3f,%4.6f,%4.6f' % (avg_delta,avg_isp,1/avg_isp,60/avg_isp))
+        print 'Average   |\t\t\t\t%4.3f\t%4.3f\t%4.6f' % (avg_delta,avg_isp,1/avg_isp)
+        f.write('Average,,,,%4.3f,%4.3f,%4.6f' % (avg_delta,avg_isp,1/avg_isp))
 
     print "\n\n",
     f.write('\n\n')
@@ -223,7 +223,7 @@ def ParseArgs( argv ):
     except getopt.GetoptError, err:
         print str(err)
         #usage()
-        print 'usage: ', argv[0], ' --file data.csv --delta 0.2 --numnei 10'
+        print 'usage: ', argv[0], ' --file data.csv --delta 0.2 --numnei 10 -a 50 -b 100 -c 500'
         sys.exit(2)
 
     output = None
@@ -247,33 +247,76 @@ def ParseArgs( argv ):
         else:
             assert False, "unhandled option"
 
-    return filename, float(delta), int(numnei), plotfig, int(a), int(b), int(c)
+    return filename, float(delta), int(numnei), plotfig, a, b, c
 
 
 
-def ProcessTimeSlice( data, times, fig, subplot, color, calcPeaks, delta = 1, numnei = 10 ):
+def ProcessTimeSlice( data, times, fig, subplot, color, calcPeaks, delta, numnei, logfile ):
     maxima = []; minima = []; bases = []
     if calcPeaks:
-        maxima,minima,bases = PeakDetector(data, delta, numnei)
+        if len(data) > 0 and len(times) > 0:
+            maxima,minima,bases = PeakDetector(data, delta, numnei)
 
     PlotOutput( fig, data, times, maxima, bases, subplot, color )
+    PrintOutput( subplot[2], maxima, bases, times, logfile )
 
 
+def valToIdx( val, data ):
+    '''
+        find the index of first element in data
+        which is >= val
+
+        assuming data is ordered list of values...
+    '''
+    idx = 0
+    cur = 0
+    val = float(val)
+    while cur < val and idx < len(data):
+        cur = data[idx]
+        idx += 1
+
+    return int(idx)
 
 def main():
     filename, delta, numnei, plotfig, a, b, c = ParseArgs( sys.argv )
-
     times,data = ParseDataFromCSV( filename )
 
-    if plotfig:
-        fig = plt.figure()
+    #print( "a,b,c=",a,b,c)
+    # if b,c haven't been specified then just parse the whole file
+    if b == 0:
+        b = times[-1]
 
-    print( "a,b,c=",a,b,c)
+    if c == 0:
+        #print('c==0 len(times=',len(times),times)
+        c = times[-1]
+
+    # conert a,b,c to idx values
+    a_idx = valToIdx(a,times)
+    b_idx = valToIdx(b,times)
+    c_idx = valToIdx(c,times)
+
+    #print(times)
+    print( "a,b,c_idx=",a_idx,b_idx,c_idx)
+
+    #if plotfig:
+    fig = plt.figure()
+
     for i in arange(len(data)):
-        ProcessTimeSlice(  data[i][0:a], times[0:a], fig,[len(data), 1, i], 'k', False, delta, numnei )
-        ProcessTimeSlice(  data[i][a:b], times[a:b], fig,[len(data), 1, i], 'r', True, delta, numnei  )
-        ProcessTimeSlice(  data[i][b:c], times[b:c], fig,[len(data), 1, i], 'g', True , delta, numnei )
-        ProcessTimeSlice(  data[i][c:],  times[c:],  fig,[len(data), 1, i], 'k', False, delta, numnei )
+        f = open('output/' + filename + '_out.csv', 'a');
+
+        print
+        print "****************   Data set %2d   ***********************" % (i+1)
+        print
+        f.write('Data set %2d\n' % (i+1))
+
+        print "\t----------   0 -> A   ------------\n"
+        ProcessTimeSlice(  data[i][0:a_idx], times[0:a_idx], fig,[len(data), 1, i], 'k', False, delta, numnei, f )
+        print "\t----------   A -> B   ------------\n"
+        ProcessTimeSlice(  data[i][a_idx:b_idx], times[a_idx:b_idx], fig,[len(data), 1, i], 'r', True, delta, numnei , f )
+        print "\t----------   B -> C   ------------\n"
+        ProcessTimeSlice(  data[i][b_idx:c_idx], times[b_idx:c_idx], fig,[len(data), 1, i], 'g', True , delta, numnei, f)
+        print "\t----------   C -> end ------------\n"
+        ProcessTimeSlice(  data[i][c_idx:],  times[c_idx:],  fig,[len(data), 1, i], 'k', False, delta, numnei, f)
     if plotfig:
         plt.show()
 
