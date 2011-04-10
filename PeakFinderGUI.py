@@ -34,7 +34,7 @@ class PeakFinderGUI(QMainWindow):
     #def __init__(self, parent=None):
     def __init__( self, csv, delta, numnei, a, b, c, parent=None):
         QMainWindow.__init__(self, parent)
-        self.setWindowTitle('Demo: PyQt with matplotlib')
+        self.setWindowTitle('PeakFinder')
 
         self.create_menu()
         self.create_main_frame()
@@ -123,7 +123,7 @@ class PeakFinderGUI(QMainWindow):
         spinbox.setMinimumWidth(100)
         spinbox.setMinimum(minval)
         spinbox.setMaximum(maxval)
-        self.connect(spinbox, SIGNAL('editingFinished ()'), self.on_recalculate)
+        #self.connect(spinbox, SIGNAL('editingFinished ()'), self.on_recalculate)
  
         #hbox.addWidget(spinbox)
         #hbox.setAlignment(spinbox, Qt.AlignVCenter)
@@ -179,11 +179,11 @@ class PeakFinderGUI(QMainWindow):
         # Layout with box sizers
         # 
         self.spinboxes = {
-                'a':self.new_spin_box( 'a', 0, 2000 ) ,
-                'b':self.new_spin_box( 'b', 0, 2000 ) ,
-                'c':self.new_spin_box( 'c', 0, 2000 ) ,
+                'a':self.new_spin_box( 'a', 0, 5000 ) ,
+                'b':self.new_spin_box( 'b', 0, 5000 ) ,
+                'c':self.new_spin_box( 'c', 0, 5000 ) ,
                 'numnei':self.new_spin_box( 'numnei', 0, 100 ) ,
-                'delta':self.new_spin_box( 'delta',  0.001, 0.2,double=True ) }
+                'delta':self.new_spin_box( 'delta',  0.0, 1.0,double=True ) }
 
         gridlayout = QGridLayout()
         layout_order = ['a','b','c','numnei','delta']
