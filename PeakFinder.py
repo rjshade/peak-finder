@@ -23,14 +23,18 @@ def valToIdx( val, data ):
     return int(idx)
 
 class PeakFinder:
-    def __init__( self, times, data, delta, numnei, a, b, c ):
-        self.Times = times
-        self.Data = data
+    def __init__( self, csv, delta, numnei, a, b, c ):
+
+        self.Times,self.Data = self.ParseDataFromCSV( csv )
         self.delta = delta
         self.numnei = numnei
         self.Results = []
 
         self.A,self.B,self.C = self.ConvertTimesToIndices( a,b,c )
+
+    def OnNewFile( self, csv ):
+        self.Times,self.Data = self.ParseDataFromCSV( csv )
+
 
     def ConvertTimesToIndices( self, a,b,c ):
         #print( "a,b,c=",a,b,c)
@@ -45,8 +49,12 @@ class PeakFinder:
         # conert a,b,c to idx values
         return valToIdx(a,self.Times), valToIdx(b,self.Times), valToIdx(c,self.Times)
 
-    def Reset( self ):
+    def Reset( self, delta, numnei, a, b, c ):
+        self.delta = delta
+        self.numnei = numnei
+        self.A, self.B, self.C = self.ConvertTimesToIndices( a,b,c ) 
         self.Results = []
+        self.Run()
 
     def Run( self ):
         self.Results = []
@@ -89,7 +97,7 @@ class PeakFinder:
             isp_times.append( peak_times[i] - peak_times[i-1] )
 
     
-        print '        \tTime\tBase\tPeak\tDelta\tISP\tISP Hz'
+        print '        \tTime\tBase\tPeak\tDelta\tISP\tFreq'
         #print "----------|------------------------------------------------------------------------------"
         for i in arange(len(peaks)):
             peak = peaks[i];
@@ -223,23 +231,25 @@ class PeakFinder:
         return True
     
     def Plot( self, fig ):
+        fig.clear()
         for i in arange(len(self.Data)):
             data = self.Data[i]
             atob = self.Results[i][0]
             btoc = self.Results[i][1]
             #times = [self.Times[j] for j in [ xima'][i][0] for i in arange(len(atob['Maxima'])) ]]
             times = self.Times
-            ax = fig.add_subplot(len(self.Data),1,i)
+            ax = fig.add_subplot(len(self.Data),1,i+1)
+            ax.clear()
 
             ax.plot(times, data, color='k')
             ax.grid(True)
 
             if( self.A < len(self.Times) ):
-                plt.axvline( x=self.Times[self.A],ymin=0, ymax=2,color='k')
+                ax.axvline( x=self.Times[self.A],ymin=0, ymax=2,color='k')
             if( self.B < len(self.Times) ):
-                plt.axvline( x=self.Times[self.B],ymin=0, ymax=2,color='r')
+                ax.axvline( x=self.Times[self.B],ymin=0, ymax=2,color='r')
             if( self.C < len(self.Times) ):
-                plt.axvline( x=self.Times[self.C],ymin=0, ymax=2,color='k')
+                ax.axvline( x=self.Times[self.C],ymin=0, ymax=2,color='k')
      
             self.PlotPeaks( ax, '', self.A, atob, times )
             self.PlotPeaks( ax, '', self.B, btoc, times )
@@ -261,6 +271,29 @@ class PeakFinder:
                     arrowprops=dict(facecolor=color, shrink=0.05),
                     horizontalalignment='center', verticalalignment='top',
                     )
+
+    def ParseDataFromCSV( self, filename ):
+        """
+        expects filename to be a CSV file in which the first column
+        is timestamps, and the remaining columns are data series
+        """
+    
+        csv_file = csv.reader(open(filename, "rb" ))
+        csv_data = []
+        csv_data.extend(csv_file)
+    
+        times = []
+    
+        # fill data_series array with an array per column of data
+        data = [ [] for i in range(len(csv_data[0])-1)]
+    
+        # now fill each array in data_series with the CSV data
+        for row in csv_data:
+            times.append(float(row[0]))
+            for i in arange(len(row[1:])):
+                data[i].append(float(row[i+1]))
+    
+        return times, data
     
     
 def ParseArgs( argv ):
@@ -302,36 +335,13 @@ def ParseArgs( argv ):
     
     return filename, float(delta), int(numnei), plotfig, a, b, c
     
-def ParseDataFromCSV( filename ):
-    """
-    expects filename to be a CSV file in which the first column
-    is timestamps, and the remaining columns are data series
-    """
-
-    csv_file = csv.reader(open(filename, "rb" ))
-    csv_data = []
-    csv_data.extend(csv_file)
-
-    times = []
-
-    # fill data_series array with an array per column of data
-    data = [ [] for i in range(len(csv_data[0])-1)]
-
-    # now fill each array in data_series with the CSV data
-    for row in csv_data:
-        times.append(float(row[0]))
-        for i in arange(len(row[1:])):
-            data[i].append(float(row[i+1]))
-
-    return times, data
-
+   
     
 
 def main():
     filename, delta, numnei, plotfig, a, b, c = ParseArgs( sys.argv )
-    times,data = ParseDataFromCSV( filename )
 
-    myPeakFinder = PeakFinder( times, data, delta, numnei, a, b, c )
+    myPeakFinder = PeakFinder( filename, delta, numnei, a, b, c )
 
     myPeakFinder.Run()
     myPeakFinder.Print()
