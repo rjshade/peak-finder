@@ -181,12 +181,10 @@ class PeakFinderGUI(QMainWindow):
                 'numnei':self.new_spin_box( 'numnei', 0, 100 ) ,
                 'delta':self.new_spin_box( 'delta',  0.001, 0.2,double=True ) }
 
-        print self.spinboxes
         gridlayout = QGridLayout()
         layout_order = ['a','b','c','numnei','delta']
         row = 1
         for lbl in layout_order:
-            print lbl
             v = self.spinboxes[lbl]
 
             label = QLabel(lbl)
