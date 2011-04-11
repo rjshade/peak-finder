@@ -71,56 +71,108 @@ class PeakFinder:
             print
             print "****************   Data set %2d   ***********************" % (i+1)
             print
-            print "\t----------   A -> B   ------------\n"
+            print "----------   A -> B   ------------\t\t\t\t\t\t\t----------   B -> C   ------------\n"
 
-            self.PrintPeaks( self.A, atob )
+            tbl = self.CreateTabulatedData(self.A, atob, self.B, btoc)
+            self.PrintTable( tbl )
 
-            print "\t----------   B -> C   ------------\n"
-            self.PrintPeaks( self.B, btoc )
+            #self.PrintPeaks( self.A, atob )
+            #self.PrintPeaks( self.B, btoc )
             
             print
 
-    def PrintPeaks( self, offset, result ):
-        peaks = result['Maxima']
-        bases = result['Bases']
-
-        if len(peaks) == 0:
-            print '\t\t    No peaks!\n'
-            return
-    
-        peak_times = [self.Times[j] for j in [ peaks[i][0] + offset for i in arange(len(peaks)) ]]
-        base_times = [self.Times[j] for j in [ bases[i][0] + offset for i in arange(len(bases)) ]]
-        deltas     = [peaks[i][1] - bases[i][1] for i in arange(len(peaks))]
-    
-        isp_times = []
-        for i in range(1,len(peaks)):
-            isp_times.append( peak_times[i] - peak_times[i-1] )
-
-    
-        print '        \tTime\tBase\tPeak\tDelta\tISP\tFreq'
-        #print "----------|------------------------------------------------------------------------------"
-        for i in arange(len(peaks)):
-            peak = peaks[i];
-            base = bases[i];
-            peak_time = peak_times[i]
-            base_time = base_times[i]
-     
-            #print 'Peak %4d |\t%4d\t%4.3f\t%4.3f\t%4.3f\t' % (i+1,peak_time,base[1],peak[1],deltas[i]),
-            print 'Peak %d\t\t%4d\t%4.3f\t%4.3f\t%4.3f\t' % (i+1,peak_time,base[1],peak[1],deltas[i]),
-     
-            if( i > 0):
-                isp = isp_times[i-1]
-                print '%4.3f' % (isp),
-     
+    def PrintTable(self, tbl ):
+        for row in tbl:
+            for item in row:
+                print '%s\t' % item,
             print
-      
-        if len(peaks) > 1:
-            avg_delta = (sum(deltas)/len(deltas))
-            avg_isp   = (sum(isp_times)/len(isp_times));
-            print 'Average  \t\t\t\t%4.3f\t%4.3f\t%4.6f' % (avg_delta,avg_isp,1/avg_isp)
-     
-        print "\n\n",
+
+    def CreateTabulatedData(self,aoff, atob, boff, btoc):
+        ''' turn atob and btoc results into a list of lists for printing
+            [ ['Peak 1', '10', '20', '30', 'Peak 1', '10', '20' ,'30']
+              ['', '', '', '',             'Peak 2', '10', '20' ,'30']
+              ['', '', '', '',             'Average', '' , ''   ,'30'] ]
+
+        '''
+
+        atob_peaks = atob['Maxima']
+        atob_bases = atob['Bases']
+
+        btoc_peaks = btoc['Maxima']
+        btoc_bases = btoc['Bases']
+
+        atob_peak_times = [self.Times[j] for j in [ atob_peaks[i][0] + aoff for i in arange(len(atob_peaks)) ]]
+        atob_base_times = [self.Times[j] for j in [ atob_bases[i][0] + aoff for i in arange(len(atob_bases)) ]]
+        atob_deltas     = [atob_peaks[i][1] - atob_bases[i][1] for i in arange(len(atob_peaks))]
     
+        atob_isp_times = []
+        for i in range(1,len(atob_peaks)):
+            atob_isp_times.append( atob_peak_times[i] - atob_peak_times[i-1] )
+
+
+        btoc_peak_times = [self.Times[j] for j in [ btoc_peaks[i][0] + boff for i in arange(len(btoc_peaks)) ]]
+        btoc_base_times = [self.Times[j] for j in [ btoc_bases[i][0] + boff for i in arange(len(btoc_bases)) ]]
+        btoc_deltas     = [btoc_peaks[i][1] - btoc_bases[i][1] for i in arange(len(btoc_peaks))]
+    
+        btoc_isp_times = []
+        for i in range(1,len(btoc_peaks)):
+            btoc_isp_times.append( btoc_peak_times[i] - btoc_peak_times[i-1] )
+
+        results = []
+
+        # column headings
+        results.append( ['Peak#','Time','Base','Peak','Delta','ISP','','Peak#','Time','Base','Peak','Delta','ISP'] )
+
+        num_rows = max( len(atob_peaks), len(btoc_peaks) )
+        for i in range(num_rows+1):
+            row = []
+            if i < len(atob_peaks): # add atob peak
+                peak = atob_peaks[i]
+                peak_time = atob_peak_times[i]
+                base = atob_bases[i]
+                base_time = atob_base_times[i]
+
+                map( row.append, [i+1, peak_time, base[1], peak[1], atob_deltas[i]] )
+
+                if( i > 0):
+                    isp = atob_isp_times[i-1]
+                    row.append( isp )
+                    row.append( '' )
+                else:
+                    row.append( '' )
+                    row.append( '' )
+            else:
+                if i == len(atob_peaks) and i > 1:
+                    avg_delta = (sum(atob_deltas)/len(atob_deltas))
+                    avg_isp   = (sum(atob_isp_times)/len(atob_isp_times));
+                    map( row.append, ['Average','','','',avg_delta,avg_isp,''] )
+                else:
+                    map( row.append, ['','','','','','',''])
+
+            if i < len(btoc_peaks): # add btoc peak
+                peak = btoc_peaks[i]
+                peak_time = btoc_peak_times[i]
+                base = btoc_bases[i]
+                base_time = btoc_base_times[i]
+
+                map( row.append, [i+1, peak_time, base[1], peak[1], btoc_deltas[i] ] )
+
+                if( i > 0):
+                    isp = btoc_isp_times[i-1]
+                    row.append( isp )
+                else:
+                    row.append( '' )
+            else:
+                if i == len(btoc_peaks) and i > 1:
+                    avg_delta = (sum(btoc_deltas)/len(btoc_deltas))
+                    avg_isp   = (sum(btoc_isp_times)/len(btoc_isp_times));
+                    map( row.append, ['Average','','','',avg_delta,avg_isp] )
+                else:
+                    map( row.append, ['','','','','',''])
+
+            results.append(row)
+        return results
+
     def PeakDetector( self, v, delta, numnei=-1):
         """
         Converted from MATLAB script at http://billauer.co.il/peakdet.html
