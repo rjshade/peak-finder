@@ -198,6 +198,11 @@ class PeakFinderGUI(QMainWindow):
         gridlayout.addWidget( self.open_button, row,1 )
         gridlayout.setAlignment(self.open_button, Qt.AlignVCenter)
 
+        self.quit_button = QPushButton("&Quit")
+        self.connect(self.quit_button, SIGNAL('clicked()'), qApp, SLOT('quit()'))
+        gridlayout.addWidget( self.quit_button, row,2 )
+        gridlayout.setAlignment(self.quit_button, Qt.AlignVCenter)
+
 
         hbox = QGridLayout()
         hbox.addWidget(self.canvas,0,0)
