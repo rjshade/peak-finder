@@ -39,12 +39,15 @@ class PeakFinder:
     def ConvertTimesToIndices( self, a,b,c ):
         #print( "a,b,c=",a,b,c)
         # if b,c haven't been specified then just parse the whole file
+        self.a_time = int(a)
+        self.b_time = int(b)
+        self.c_time = int(c)
         if b == 0:
-            b = len(self.Times) - 1
+            b = self.Times[len(self.Times) - 1]
 
         if c == 0:
             #print('c==0 len(times=',len(times),times)
-            c = len(self.Times) - 1
+            c = self.Times[len(self.Times) - 1]
 
         # conert a,b,c to idx values
         return valToIdx(a,self.Times), valToIdx(b,self.Times), valToIdx(c,self.Times)
@@ -70,6 +73,10 @@ class PeakFinder:
 
             print
             print "****************   Data set %2d   ***********************" % (i+1)
+            print
+            print "%8s\t%8s\t%8s\t%8s\t%8s" % ('','Start','End','Length','Peaks')
+            print "%8s\t%8s\t%8s\t%8s\t%8s" % ('--- A -> B ---',self.a_time,self.b_time,(self.b_time-self.a_time),len(atob['Maxima']))
+            print "%8s\t%8s\t%8s\t%8s\t%8s" % ('--- B -> C ---',self.b_time,self.c_time,(self.c_time-self.b_time),len(btoc['Maxima']))
             print
             print "----------   A -> B   ------------\t\t\t\t\t\t\t----------   B -> C   ------------\n"
 
